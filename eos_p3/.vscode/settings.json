@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.make": "makefile",
+        "type.h": "c"
+    }
+}

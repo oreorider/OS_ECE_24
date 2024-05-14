@@ -54,3 +54,23 @@ void eos_notify_condition(eos_condition_t *cond)
     /* Selects a task in wait_queue and wake it up */
     _os_wakeup_single(&cond->wait_queue, cond->queue_type);
 }
+
+
+int8u_t eos_lock_scheduler(){
+    int32u_t flag = hal_disable_interrupt();
+    int8u_t temp = _os_scheduler_lock;
+    _os_scheduler_lock = LOCKED;
+    hal_restore_interrupt(flag);
+    return temp;
+}
+
+void eos_restore_scheduler(int8u_t scheduler_state){
+    int32u_t flag = hal_disable_interrupt();
+    _os_scheduler_lock = scheduler_state;
+    hal_restore_interrupt(flag);
+    eos_schedule();
+}
+
+int8u_t eos_get_scheduler_lock(){
+    return _os_scheduler_lock;
+}

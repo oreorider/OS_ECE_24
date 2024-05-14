@@ -9,6 +9,8 @@
 
 #ifndef EOS_H
 #define EOS_H
+#define ST_ACTIVE = True
+#define ST_SLEEPING = False
 
 #include <core/eos_internal.h>
 
@@ -176,6 +178,10 @@ void eos_wait_condition(eos_condition_t *cond, eos_semaphore_t *mutex);
  */
 void eos_notify_condition(eos_condition_t *cond);
 
+extern int8u_t eos_lock_scheduler();
+extern void eos_restore_scheduler(int8u_t lock);
+extern int8u_t eos_get_scheduler_lock();
+
 
 /********************************************************
  * Message queue module 
@@ -212,11 +218,14 @@ int8u_t eos_receive_message(eos_mqueue_t *mq, void *message, int32s_t timeout);
 /* TCB (task control block) structure */
 typedef struct tcb {
     // To by filled by students: Projects 2, 3, and 4
-    bool_t state;
+    int32u_t state;
     int32u_t priority;
     int32u_t period;
     addr_t context;
     _os_node_t* node;
+    void (*entry)(void* arg);
+    void* arg;
+    eos_alarm_t* alarm;
 } eos_tcb_t;
 
 /**
