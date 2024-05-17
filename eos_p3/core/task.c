@@ -124,7 +124,9 @@ void eos_schedule() {
         if(save != NULL){
             _os_current_task->context = save;
             _os_current_task->state = READY;
+            
             if(_os_current_task->period == 0){
+            //if(_os_current_task->state == READY){
                 //PRINT("swapping out current task: 0x%x to ready queue\n", _os_current_task);
                 _os_add_node_tail(&(_os_ready_queue[_os_current_task->node->priority]), _os_current_task->node);
                 _os_set_ready(_os_current_task->priority);
