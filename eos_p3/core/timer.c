@@ -26,9 +26,11 @@ void eos_set_alarm(eos_counter_t* counter, eos_alarm_t* alarm, int32u_t timeout,
     // To be filled by students: Project 3
     //remove alarm from alarm queue
     _os_remove_node(&(counter->alarm_queue), &(alarm->alarm_queue_node));
-
+    //PRINT("set alarm\n");
     //return if 0 or entry is null
+
     if(timeout == 0 || entry == NULL){
+        //PRINT("straight return\n");
         return;
     }
 
@@ -39,8 +41,14 @@ void eos_set_alarm(eos_counter_t* counter, eos_alarm_t* alarm, int32u_t timeout,
     alarm->alarm_queue_node.ptr_data = alarm;
     alarm->alarm_queue_node.priority = timeout;
 
-    //add alarm to counter's alarm queue
-    _os_add_node_priority(&(counter->alarm_queue), &(alarm->alarm_queue_node));
+    //add alarm to counter's alarm queue if time is up
+    if(timeout > counter->tick){
+        //PRINT("add node\n");
+        _os_add_node_priority(&(counter->alarm_queue), &(alarm->alarm_queue_node));
+    }
+    else{
+        //PRINT("no add node\n");
+    }
 }
 
 

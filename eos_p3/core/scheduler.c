@@ -83,6 +83,7 @@ int32u_t _os_get_highest_priority()
 
 void _os_set_ready(int8u_t priority)
 {
+    //PRINT("set ready prio %u\n", priority);
     /* Sets corresponding bit of ready_group to 1 */
     _os_ready_group |= _os_map_table[priority >> 3];
 
@@ -93,6 +94,7 @@ void _os_set_ready(int8u_t priority)
 
 void _os_unset_ready(int8u_t priority)
 {
+    //PRINT("set unready prio %u\n", priority);
     /* Sets corresponding bit of ready_table to 0 */
     if ((_os_ready_table[priority >> 3] &= ~_os_map_table[priority & 0x07]) == 0) {
         /* If no ready task exists in the priority group,

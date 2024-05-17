@@ -11,7 +11,7 @@
 
 #define READY		1
 #define RUNNING		2
-#define WAITING		3
+#define SLEEPING		3
 #define SUSPENDED       4
 
 /**
@@ -47,12 +47,7 @@ int32u_t eos_create_task(eos_tcb_t *task, addr_t sblock_start, size_t sblock_siz
     task->state = READY;
     task->priority = priority;
     task->period = 0;//unused
-    task->context = _os_create_context(
-        sblock_start,
-        sblock_size,
-        entry,
-        arg
-    );
+    task->context = _os_create_context(sblock_start, sblock_size, entry, arg);
     task->node = queue_node;
     task->entry = entry;
     task->arg = arg;
@@ -61,6 +56,7 @@ int32u_t eos_create_task(eos_tcb_t *task, addr_t sblock_start, size_t sblock_siz
 
 
     //add node to ready queue
+    PRINT("add task 0x%x with prio %u to ready queue\n", task, task->priority);
     _os_add_node_tail(&(_os_ready_queue[priority]), task->node);
     _os_set_ready(priority);
 
@@ -117,40 +113,48 @@ void print_registers(){
 
 void eos_schedule() {
     // To be filled by students: Projects 2 and 3
-    
+
     //task currently running, save context and add back to ready queue
     if(_os_current_task != NULL){
         //save context (save holds stack pointer)
         addr_t save = _os_save_context();
+        //PRINT("current task 0x%x prio: %u status: %u\n", _os_current_task, _os_current_task->priority, _os_current_task->state);
 
         //save context of current task and set current task to READY add to ready queue
         if(save != NULL){
             _os_current_task->context = save;
             _os_current_task->state = READY;
-            _os_add_node_tail(&(_os_ready_queue[_os_current_task->priority]), _os_current_task->node);
-            //PRINT("added to ready queue\n")
+            if(_os_current_task->period == 0){
+                //PRINT("swapping out current task: 0x%x to ready queue\n", _os_current_task);
+                _os_add_node_tail(&(_os_ready_queue[_os_current_task->node->priority]), _os_current_task->node);
+                _os_set_ready(_os_current_task->priority);
+            }
         }
         else{
             return;
         }
     }
-    else{
-        //PRINT("no task running\n");
-    }
 
     //restore context of ready task with highest prio
     int32u_t prio = _os_get_highest_priority();
+    //PRINT("highest prio: %u\n", prio);
     _os_node_t* h_prio_node = _os_ready_queue[prio];
 
     //choose next task, set the new task to running and remove from ready queue, restore context to run
-    if(h_prio_node != NULL){;
-        
+    if(h_prio_node != NULL){
+        //PRINT("run next task\n");
         _os_current_task = h_prio_node->ptr_data;//chose next task
         _os_current_task->state = RUNNING;
+        //if(_os_ready_queue[prio] == NULL){
+        //    _os_unset_ready(prio);
+        //}
+        _os_unset_ready(prio);
         _os_remove_node(&(_os_ready_queue[prio]), h_prio_node);//remove from ready queue
         _os_restore_context(_os_current_task->context);
-        
     }    
+    else{
+        //PRINT("skip??\n");
+    }
 }
 
 
@@ -193,7 +197,8 @@ int32u_t eos_resume_task(eos_tcb_t *task) {
 void eos_sleep(int32u_t tick) {
     // To be filled by students: Project 3
     eos_tcb_t* current_task = eos_get_current_task();
-    current_task->state = SUSPENDED;
+    //PRINT("sleepy time, task period: %u\n", current_task->period);
+    current_task->state = SLEEPING;
 
     int32u_t timeout = 0;
     if(tick == 0){
@@ -202,13 +207,14 @@ void eos_sleep(int32u_t tick) {
     else{
         timeout = eos_get_system_timer()->tick + tick;
     }
-
+    //PRINT("sleepy time, setting alarm, and calling new schedule\n");
     eos_set_alarm(eos_get_system_timer(), current_task->alarm, timeout, _os_wakeup_sleeping_task, current_task);
+    eos_schedule();
 }
 
 
 void _os_init_task() {
-    PRINT("Initializing task module\n");
+    //PRINT("Initializing task module\n");
 
     /* Initializes current_task */
     _os_current_task = NULL;
@@ -238,6 +244,8 @@ void _os_wakeup_all(_os_node_t **wait_queue, int32u_t queue_type) {
 void _os_wakeup_sleeping_task(void *arg) {
     // To be filled by students: Project 3
     eos_tcb_t* wakeup_task = (eos_tcb_t*)arg;
+    //PRINT("wakey wakey task 0x%x\n", arg);
     wakeup_task->state = READY;
     _os_set_ready(wakeup_task->priority);
+    _os_add_node_tail(&_os_ready_queue[wakeup_task->priority], wakeup_task->node);
 }
